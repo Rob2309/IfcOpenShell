@@ -1273,26 +1273,27 @@ class Geometry(bonsai.core.tool.Geometry):
         return tool.Ifc.get().by_type("IfcShapeRepresentation")
 
     @classmethod
-    def flip_object(cls, obj: bpy.types.Object, flip_local_axes: str) -> None:
+    def flip_object(cls, obj: bpy.types.Object, flip_local_axes: str, use_active_representation: bool = False) -> None:
         assert len(flip_local_axes) == 2, "flip_local_axes must be two axes to flip"
         rotation_axis = next(i for i in "XYZ" if i not in flip_local_axes)
         rotation_axis_i = "XYZ".index(rotation_axis)
 
-        element = tool.Ifc.get_entity(obj)
-        context_3d = ifcopenshell.util.representation.get_context(tool.Ifc.get(), "Model", "Body", "MODEL_VIEW")
-        repr_3d = ifcopenshell.util.representation.get_representation(element, context_3d) if context_3d else None
-        current_representation = tool.Geometry.get_active_representation(obj)
-        if repr_3d:
-            bonsai.core.geometry.switch_representation(
-                tool.Ifc,
-                tool.Geometry,
-                obj=obj,
-                representation=repr_3d,
-                should_reload=False,
-                is_global=False,
-                should_sync_changes_first=False,
-            )
-            bpy.context.view_layer.update()
+        if not use_active_representation:
+            element = tool.Ifc.get_entity(obj)
+            context_3d = ifcopenshell.util.representation.get_context(tool.Ifc.get(), "Model", "Body", "MODEL_VIEW")
+            repr_3d = ifcopenshell.util.representation.get_representation(element, context_3d) if context_3d else None
+            current_representation = tool.Geometry.get_active_representation(obj)
+            if repr_3d:
+                bonsai.core.geometry.switch_representation(
+                    tool.Ifc,
+                    tool.Geometry,
+                    obj=obj,
+                    representation=repr_3d,
+                    should_reload=False,
+                    is_global=False,
+                    should_sync_changes_first=False,
+                )
+                bpy.context.view_layer.update()
 
         bb_data = tool.Blender.get_object_bounding_box(obj)
         # min max points of rotated plane of origin based bounding box
@@ -1308,7 +1309,7 @@ class Geometry(bonsai.core.tool.Geometry):
         new_max_point = obj.matrix_world @ max_point
         obj.matrix_world.translation += original_min_point - new_max_point
 
-        if repr_3d:
+        if (not use_active_representation) and repr_3d:
             bonsai.core.geometry.switch_representation(
                 tool.Ifc,
                 tool.Geometry,
